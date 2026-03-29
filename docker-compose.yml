@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cdc-demo-postgres
+    environment:
+      POSTGRES_DB: cdcdemo
+      POSTGRES_USER: cdcuser
+      POSTGRES_PASSWORD: cdcpassword
+    ports:
+      - "5433:5432"
+    command: >
+      postgres
+        -c wal_level=logical
+        -c max_wal_senders=4
+        -c max_replication_slots=4
+        -c wal_sender_timeout=0
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cdcuser -d cdcdemo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cdc-demo-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cdcdemo
+      SPRING_DATASOURCE_USERNAME: cdcuser
+      SPRING_DATASOURCE_PASSWORD: cdcpassword
+      DEBEZIUM_DB_HOST: postgres
+      DEBEZIUM_DB_PORT: 5432
+      DEBEZIUM_DB_NAME: cdcdemo
+      DEBEZIUM_DB_USER: cdcuser
+      DEBEZIUM_DB_PASSWORD: cdcpassword
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cdc-demo-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
