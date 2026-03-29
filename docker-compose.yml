@@ -23,6 +23,19 @@ services:
       timeout: 5s
       retries: 10
 
+  mongo:
+    image: mongo:7
+    container_name: cdc-demo-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./backend
@@ -39,8 +52,11 @@ services:
       DEBEZIUM_DB_NAME: cdcdemo
       DEBEZIUM_DB_USER: cdcuser
       DEBEZIUM_DB_PASSWORD: cdcpassword
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/cdcaudit
     depends_on:
       postgres:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
 
   frontend:
@@ -55,3 +71,4 @@ services:
 
 volumes:
   postgres-data:
+  mongo-data:

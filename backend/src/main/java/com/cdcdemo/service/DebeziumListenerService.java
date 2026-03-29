@@ -1,6 +1,8 @@
 package com.cdcdemo.service;
 
 import com.cdcdemo.dto.CdcEvent;
+import com.cdcdemo.model.AuditLog;
+import com.cdcdemo.repository.AuditLogRepository;
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
@@ -30,15 +32,18 @@ public class DebeziumListenerService {
     private final Configuration debeziumConfiguration;
     private final ExecutorService executorService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AuditLogRepository auditLogRepository;
 
     private DebeziumEngine<RecordChangeEvent<SourceRecord>> engine;
 
     public DebeziumListenerService(Configuration debeziumConfiguration,
                                    ExecutorService executorService,
-                                   SimpMessagingTemplate messagingTemplate) {
+                                   SimpMessagingTemplate messagingTemplate,
+                                   AuditLogRepository auditLogRepository) {
         this.debeziumConfiguration = debeziumConfiguration;
         this.executorService = executorService;
         this.messagingTemplate = messagingTemplate;
+        this.auditLogRepository = auditLogRepository;
     }
 
     @PostConstruct
@@ -91,6 +96,9 @@ public class DebeziumListenerService {
 
         log.info("CDC event: {} on {} | lsn={}", event.getOperation(), event.getTableName(), event.getLsn());
 
+        // Persist to MongoDB for audit history
+        auditLogRepository.save(toAuditLog(event));
+
         // Broadcast to all WebSocket subscribers
         messagingTemplate.convertAndSend("/topic/cdc-events", event);
     }
@@ -135,6 +143,19 @@ public class DebeziumListenerService {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    private AuditLog toAuditLog(CdcEvent event) {
+        AuditLog log = new AuditLog();
+        log.setId(event.getEventId());
+        log.setOperation(event.getOperation());
+        log.setTableName(event.getTableName());
+        log.setTimestamp(event.getTimestamp());
+        log.setLsn(event.getLsn());
+        log.setTxId(event.getTxId());
+        log.setBefore(event.getBefore());
+        log.setAfter(event.getAfter());
+        return log;
     }
 
     private Map<String, Object> structToMap(Struct parent, String fieldName) {

@@ -68,6 +68,12 @@
             <version>${debezium.version}</version>
         </dependency>
 
+        <!-- MongoDB for audit log persistence -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- Jackson (already pulled in by spring-boot-starter-web, explicit for clarity) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

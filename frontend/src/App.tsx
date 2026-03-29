@@ -2,6 +2,7 @@ import { useWebSocket } from './hooks/useWebSocket'
 import { PipelineDiagram } from './components/PipelineDiagram'
 import { ProductTable } from './components/ProductTable'
 import { EventStream } from './components/EventStream'
+import { AuditLogPanel } from './components/AuditLogPanel'
 
 export default function App() {
   const { events, status, clearEvents } = useWebSocket()
@@ -46,6 +47,9 @@ export default function App() {
           <EventStream events={events} status={status} onClear={clearEvents} />
         </div>
       </div>
+
+      {/* Audit Log — persisted in MongoDB, updated in real-time via WebSocket */}
+      <AuditLogPanel liveEvents={events} />
 
       {/* Footer */}
       <footer className="mt-4 text-center text-xs text-gray-700">
