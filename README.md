@@ -62,6 +62,29 @@ sequenceDiagram
     Debezium->>App: Broadcast via WebSocket
 ```
 
+> **Common confusion — is a replication slot the same as a read replica (slave database)?**
+>
+> No. They are completely different things that both happen to use the WAL.
+>
+> | | Replication Slot (CDC) | Read Replica (slave DB) |
+> |---|---|---|
+> | **What it is** | A bookmark / cursor in the WAL | A full copy of the database |
+> | **Purpose** | Remember how far a consumer has read | Offload read queries, failover |
+> | **Has its own DB?** | No | Yes — a complete PostgreSQL instance |
+> | **Data goes to** | Any consumer (e.g. our Spring Boot app) | Another PostgreSQL server |
+>
+> A read replica *uses* the WAL to rebuild a complete second database. A replication slot *uses* the WAL as a stream of events — it is just a bookmark, no second database is created.
+>
+> ```mermaid
+> flowchart TB
+>     PG["PostgreSQL (primary)"]
+>     PG -->|"streams WAL"| R["PostgreSQL\n(read replica)\n\nFull copy of the DB\nYou can run SELECT here"]
+>     PG -->|"slot = bookmark"| S["🔖 Replication Slot\n\nJust a cursor position\nNo data stored"]
+>     S --> D["Debezium\n(reads change events)"]
+> ```
+>
+> **One risk to know:** because PostgreSQL will not discard WAL entries until the slot has read them, if Debezium is stopped for a long time the WAL file on disk keeps growing. In this demo `slot.drop.on.stop=true` drops the slot on shutdown to avoid that.
+
 ---
 
 ## The Most Important Config
