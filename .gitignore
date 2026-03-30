@@ -17,5 +17,8 @@ frontend/dist/
 # OS
 .DS_Store
 
-# Claude
-.claude/
+# Claude Code — ignore local settings but commit skills
+.claude/settings.local.json
+
+# GitNexus index database (generated, do not commit)
+.gitnexus/
